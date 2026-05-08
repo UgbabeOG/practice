@@ -142,48 +142,79 @@ func main() {
 		// Handle tags with arguments: (up, n), (low, n), (cap, n)
 		if strings.Contains(cleanWord, ",") {
 			parts := strings.Split(cleanWord, ",")
-			if len(parts) == 2 {
-				tag := parts[0]
-				// Clean the number part of any remaining parentheses
+			tag := parts[0]
+			var n int
+			var err error
+			tagWordsToRemove := 1
+
+			if len(parts) == 2 && parts[1] != "" {
 				numStr := strings.TrimRight(parts[1], ")")
-				n, err := strconv.Atoi(numStr)
+				n, err = strconv.Atoi(numStr)
+			} else if i+1 < len(content) {
+				numStr := strings.TrimRight(content[i+1], ")")
+				n, err = strconv.Atoi(numStr)
+				tagWordsToRemove = 2
+			}
 
-				if err == nil && i > 0 {
-					start := i - n
-					if start < 0 {
-						start = 0
-					}
-
-					for j := start; j < i; j++ {
-						switch tag {
-						case "up":
-							content[j] = strings.ToUpper(content[j])
-						case "low":
-							content[j] = strings.ToLower(content[j])
-						case "cap":
-							content[j] = capitalize(content[j])
-						}
-					}
-					// Remove the tag itself
-					content = append(content[:i], content[i+1:]...)
-					i--
+			if err == nil && i > 0 {
+				start := i - n
+				if start < 0 {
+					start = 0
 				}
+
+				for j := start; j < i; j++ {
+					switch tag {
+					case "up":
+						content[j] = strings.ToUpper(content[j])
+					case "low":
+						content[j] = strings.ToLower(content[j])
+					case "cap":
+						content[j] = capitalize(content[j])
+					}
+				}
+				// Remove the tag itself
+				content = append(content[:i], content[i+tagWordsToRemove:]...)
+				i--
 			}
 		}
 	}
-	var vowels = "aei	ouhAEIOUH"
-	for k := 0; k < len(content); k++ {
+
+	// Punctuation handling
+	puncs := ".,!?:;"
+	for i := 0; i < len(content); i++ {
+		if i > 0 && len(content[i]) > 0 && strings.ContainsAny(string(content[i][0]), puncs) {
+			j := 0
+			for j < len(content[i]) && strings.ContainsAny(string(content[i][j]), puncs) {
+				j++
+			}
+			puncPart := content[i][:j]
+			remainder := content[i][j:]
+
+
+			content[i-1] += puncPart
+			if remainder == "" {
+				content = append(content[:i], content[i+1:]...)
+				i--
+			} else {
+				content[i] = remainder
+			}
+		}
+	}
+
+	var vowels = "aeiouhAEIOUH"
+	for k := 0; k < len(content)-1; k++ {
 		word := content[k]
 		nextWord := content[k+1]
-		if strings.ContainsAny(string(nextWord[0]), vowels) {
-			if word == "a" {
-				content[k] = "an"
-			} else if word == "A" {
-				content[k] = "An"
+		if len(nextWord) > 0 && strings.ContainsAny(string(nextWord[0]), vowels) {
+			if strings.ToLower(word) == "a" {
+				if word == "a" {
+					content[k] = "an"
+				} else {
+					content[k] = "An"
+				}
+
 			}
-
 		}
-
 	}
 
 	result := strings.Join(content, " ")
